@@ -1718,6 +1718,7 @@ dependencies = [
 [[package]]
 name = "gear-core"
 version = "1.0.1"
+source = "git+https://github.com/gear-tech/gear?branch=master#622564deeda231c1cfeabade56c9ed03d3d1f2fd"
 dependencies = [
  "blake2-rfc",
  "byteorder",
@@ -1740,6 +1741,7 @@ dependencies = [
 [[package]]
 name = "gear-core-errors"
 version = "1.0.1"
+source = "git+https://github.com/gear-tech/gear?branch=master#622564deeda231c1cfeabade56c9ed03d3d1f2fd"
 dependencies = [
  "derive_more",
  "enum-iterator",
@@ -1755,6 +1757,7 @@ checksum = "f745ed9eb163f4509f01d5564e37db52ec43dd23569bafdba597a5f1e4c125c9"
 [[package]]
 name = "gear-wasm-instrument"
 version = "1.0.1"
+source = "git+https://github.com/gear-tech/gear?branch=master#622564deeda231c1cfeabade56c9ed03d3d1f2fd"
 dependencies = [
  "enum-iterator",
  "gwasm-instrument",
@@ -1852,6 +1855,7 @@ dependencies = [
 [[package]]
 name = "gsdk"
 version = "1.0.1"
+source = "git+https://github.com/gear-tech/gear?branch=master#622564deeda231c1cfeabade56c9ed03d3d1f2fd"
 dependencies = [
  "anyhow",
  "base64 0.21.4",
@@ -1879,6 +1883,7 @@ dependencies = [
 [[package]]
 name = "gsdk-codegen"
 version = "1.0.1"
+source = "git+https://github.com/gear-tech/gear?branch=master#622564deeda231c1cfeabade56c9ed03d3d1f2fd"
 dependencies = [
  "proc-macro2",
  "quote",

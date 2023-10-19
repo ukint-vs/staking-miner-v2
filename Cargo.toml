@@ -15,21 +15,26 @@ serde = "1.0"
 serde_json = "1.0"
 futures = "0.3"
 thiserror = "1.0"
-tokio = { version = "1.32", features = ["macros", "rt-multi-thread", "sync", "signal"] }
+tokio = { version = "1.32", features = [
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "signal",
+] }
 pin-project-lite = "0.2"
 
 # subxt
-subxt = {version = "0.32" , features = ["substrate-compat"]}
+subxt = { version = "0.32", features = ["substrate-compat"] }
 scale-value = "0.12.0"
 
 # substrate
-frame-election-provider-support = { git = "https://github.com/gear-tech/substrate" , branch = "gear-polkadot-v0.9.41-canary-no-sandbox"}
+frame-election-provider-support = { git = "https://github.com/gear-tech/substrate", branch = "gear-polkadot-v0.9.41-canary-no-sandbox" }
 pallet-election-provider-multi-phase = { git = "https://github.com/gear-tech/substrate", branch = "gear-polkadot-v0.9.41-canary-no-sandbox" }
 sp-npos-elections = { git = "https://github.com/gear-tech/substrate", branch = "gear-polkadot-v0.9.41-canary-no-sandbox" }
 frame-support = { git = "https://github.com/gear-tech/substrate", branch = "gear-polkadot-v0.9.41-canary-no-sandbox" }
-sp-runtime = { git = "https://github.com/gear-tech/substrate",branch = "gear-polkadot-v0.9.41-canary-no-sandbox" }
+sp-runtime = { git = "https://github.com/gear-tech/substrate", branch = "gear-polkadot-v0.9.41-canary-no-sandbox" }
 
-gsdk = {path = "../gear/gsdk"}
+gsdk = { git = "https://github.com/gear-tech/gear", branch = "master" }
 
 # prometheus
 prometheus = "0.13"
@@ -39,7 +44,7 @@ once_cell = "1.18"
 [dev-dependencies]
 anyhow = "1"
 assert_cmd = "2.0"
-sp-storage = { git = "https://github.com/gear-tech/substrate", branch = "gear-polkadot-v0.9.41-canary-no-sandbox"}
+sp-storage = { git = "https://github.com/gear-tech/substrate", branch = "gear-polkadot-v0.9.41-canary-no-sandbox" }
 regex = "1"
 
 [features]
