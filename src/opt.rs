@@ -19,8 +19,7 @@ use crate::error::Error;
 use clap::*;
 use serde::{Deserialize, Serialize};
 use sp_npos_elections::BalancingConfig;
-use sp_runtime::DeserializeOwned;
-use std::{collections::HashMap, fmt, str::FromStr};
+use std::{fmt, str::FromStr};
 
 /// The type of solver to use.
 // A common option across multiple commands.
@@ -50,7 +49,7 @@ pub enum Chain {
 	Westend,
 	Kusama,
 	Polkadot,
-	Vara
+	Vara,
 }
 
 impl fmt::Display for Chain {
@@ -83,9 +82,7 @@ impl TryFrom<subxt::backend::unstable::rpc_methods::RuntimeSpec> for Chain {
 	type Error = Error;
 
 	fn try_from(rv: subxt::backend::unstable::rpc_methods::RuntimeSpec) -> Result<Self, Error> {
-		let spec_name = rv
-			.spec_name
-			.clone();
+		let spec_name = rv.spec_name.clone();
 		let mut chain = spec_name;
 		chain.make_ascii_lowercase();
 		Chain::from_str(&chain)
@@ -105,13 +102,7 @@ impl From<subxt::backend::unstable::rpc_methods::RuntimeSpec> for RuntimeVersion
 
 		spec_name.make_ascii_lowercase();
 
-		Self {
-			spec_name,
-			impl_name,
-			impl_version,
-			spec_version,
-			transaction_version,
-		}
+		Self { spec_name, impl_name, impl_version, spec_version, transaction_version }
 	}
 }
 
@@ -122,9 +113,4 @@ pub struct RuntimeVersion {
 	pub spec_version: u32,
 	pub impl_version: u32,
 	pub transaction_version: u32,
-}
-
-fn get_val_unchecked<T: DeserializeOwned>(val: &str, rv: &HashMap<String, serde_json::Value>) -> T {
-	let json = rv.get(val).expect("`{val}` must exist; qed").clone();
-	serde_json::from_value::<T>(json).expect("T must be Deserialize; qed")
 }

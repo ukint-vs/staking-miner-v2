@@ -29,18 +29,12 @@ use codec::{Decode, Encode};
 use frame_election_provider_support::NposSolution;
 use futures::future::TryFutureExt;
 use gsdk::{signer::Signer, Api};
-use jsonrpsee::{core::Error as JsonRpseeError, types::error::CallError};
+
 use pallet_election_provider_multi_phase::{RawSolution, SolutionOf};
 use sp_runtime::Perbill;
 use std::{str::FromStr, sync::Arc};
 use subxt::{
-	backend::legacy::rpc_methods::DryRunResult,
-	backend::{rpc::RpcSubscription, StreamOfResults},
-	blocks::BlockRef,
-	config::Header as _,
-	error::RpcError,
-	tx::ValidationResult,
-	Error as SubxtError,
+	backend::StreamOfResults, blocks::BlockRef, config::Header as _, tx::ValidationResult,
 };
 use tokio::sync::Mutex;
 
@@ -178,7 +172,7 @@ where
 	T::Solution: Send,
 {
 	let signer = Signer::new(gear_api, &config.seed_or_path, None).unwrap();
-	let account_id: [u8; 32] = signer.account_id().clone().into();	
+	let account_id: [u8; 32] = signer.account_id().clone().into();
 
 	let account_info = {
 		let addr = runtime::storage().system().account(&account_id.into());
@@ -302,20 +296,16 @@ where
 
 	let account_id: [u8; 32] = signer.account_id().clone().into();
 
-	ensure_no_previous_solution::<T::Solution>(
-		&api,
-		block_hash,
-		&account_id.into(),
-	)
-	.inspect_err(|e| {
-		log::debug!(
-			target: LOG_TARGET,
-			"ensure_no_previous_solution failed: {:?}; skipping block: {}",
-			e,
-			at.number
-		)
-	})
-	.await?;
+	ensure_no_previous_solution::<T::Solution>(&api, block_hash, &account_id.into())
+		.inspect_err(|e| {
+			log::debug!(
+				target: LOG_TARGET,
+				"ensure_no_previous_solution failed: {:?}; skipping block: {}",
+				e,
+				at.number
+			)
+		})
+		.await?;
 
 	tokio::time::sleep(std::time::Duration::from_secs(config.delay as u64)).await;
 	let _lock = submit_lock.lock().await;
@@ -384,20 +374,16 @@ where
 		})
 		.await?;
 
-	ensure_no_previous_solution::<T::Solution>(
-		&api,
-		best_head,
-		&account_id.into(),
-	)
-	.inspect_err(|e| {
-		log::debug!(
-			target: LOG_TARGET,
-			"ensure_no_previous_solution failed: {:?}; skipping block: {:?}",
-			e,
-			best_head,
-		)
-	})
-	.await?;
+	ensure_no_previous_solution::<T::Solution>(&api, best_head, &account_id.into())
+		.inspect_err(|e| {
+			log::debug!(
+				target: LOG_TARGET,
+				"ensure_no_previous_solution failed: {:?}; skipping block: {:?}",
+				e,
+				best_head,
+			)
+		})
+		.await?;
 
 	match ensure_solution_passes_strategy(&api, best_head, score, config.submission_strategy)
 		.timed()

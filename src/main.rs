@@ -35,22 +35,19 @@ mod helpers;
 mod opt;
 mod prelude;
 mod prometheus;
-// mod signer;
 mod static_types;
 
 use clap::Parser;
 use error::Error;
 use futures::future::{BoxFuture, FutureExt};
-use gsdk::{metadata::calls::GearCall, GearConfig};
-use jsonrpsee::ws_client::WsClientBuilder;
+use gsdk::GearConfig;
+
 use prelude::*;
+use std::str::FromStr;
 use subxt::backend::rpc::RpcClient;
 use subxt::backend::unstable::UnstableRpcMethods;
-use std::{str::FromStr, sync::Arc};
 use tokio::sync::oneshot;
 use tracing_subscriber::EnvFilter;
-
-use crate::opt::RuntimeVersion;
 
 #[derive(Debug, Clone, Parser)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -144,9 +141,7 @@ async fn main() -> Result<(), Error> {
 	// };
 
 	let rpc = loop {
-		match RpcClient::from_url(&uri)
-			.await
-		{
+		match RpcClient::from_url(&uri).await {
 			Ok(rpc) => break rpc,
 			Err(e) => {
 				log::warn!(
@@ -162,7 +157,7 @@ async fn main() -> Result<(), Error> {
 	let api = SubxtClient::from_rpc_client(rpc.clone()).await?;
 	let gear_api = gsdk::Api::new(Some(&uri)).await.unwrap();
 	// let gear_signer = gear_api.clone().signer("", None)?;
-	let unstable_rpc = UnstableRpcMethods::<GearConfig>::new(rpc);
+	let _unstable_rpc = UnstableRpcMethods::<GearConfig>::new(rpc);
 	// let sub_id = unstable_rpc.chainhead_unstable_follow(true).await?.subscription_id();
 	let runtime_version = api.backend().current_runtime_version().await?;
 	let chain = opt::Chain::from_str("vara")?;
@@ -180,12 +175,18 @@ async fn main() -> Result<(), Error> {
 
 	let res = any_runtime!(chain, {
 		let fut = match command {
-			Command::Monitor(cfg) => commands::monitor_cmd::<MinerConfig>(api, gear_api, cfg).boxed(),
-			Command::DryRun(cfg) => commands::dry_run_cmd::<MinerConfig>(api, gear_api, cfg).boxed(),
-			Command::EmergencySolution(cfg) =>
-				commands::emergency_solution_cmd::<MinerConfig>(api, cfg).boxed(),
+			Command::Monitor(cfg) => {
+				commands::monitor_cmd::<MinerConfig>(api, gear_api, cfg).boxed()
+			},
+			Command::DryRun(cfg) => {
+				commands::dry_run_cmd::<MinerConfig>(api, gear_api, cfg).boxed()
+			},
+			Command::EmergencySolution(cfg) => {
+				commands::emergency_solution_cmd::<MinerConfig>(api, cfg).boxed()
+			},
 			Command::Info => async {
-				let is_compat = if runtime::is_codegen_valid_for(&api.metadata()) { "YES" } else { "NO" };
+				let is_compat =
+					if runtime::is_codegen_valid_for(&api.metadata()) { "YES" } else { "NO" };
 
 				eprintln!("Remote_node:\n{:#?}", runtime_version);
 				eprintln!("Compatible: {is_compat}");
@@ -255,7 +256,7 @@ async fn runtime_upgrade_task(api: SubxtClient, tx: oneshot::Sender<Error>) {
 		Ok(u) => u,
 		Err(e) => {
 			let _ = tx.send(e.into());
-			return
+			return;
 		},
 	};
 
@@ -269,10 +270,10 @@ async fn runtime_upgrade_task(api: SubxtClient, tx: oneshot::Sender<Error>) {
 					Ok(u) => u,
 					Err(e) => {
 						let _ = tx.send(e.into());
-						return
+						return;
 					},
 				};
-				continue
+				continue;
 			},
 		};
 
@@ -281,7 +282,7 @@ async fn runtime_upgrade_task(api: SubxtClient, tx: oneshot::Sender<Error>) {
 			Ok(()) => {
 				if let Err(e) = epm::update_metadata_constants(&api).await {
 					let _ = tx.send(e);
-					return
+					return;
 				}
 				prometheus::on_runtime_upgrade();
 				log::info!(target: LOG_TARGET, "upgrade to version: {} successful", version);

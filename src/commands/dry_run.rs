@@ -16,14 +16,12 @@
 
 //! The dry-run command.
 
-use std::ops::Deref;
-
 use pallet_election_provider_multi_phase::RawSolution;
 
 use crate::{epm, error::Error, helpers::storage_at, opt::Solver, prelude::*, static_types};
 use clap::Parser;
 use codec::Encode;
-use gsdk::{signer::{Signer, Inner}, Api, metadata::gear};
+use gsdk::{signer::Signer, Api};
 
 #[derive(Debug, Clone, Parser)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -112,22 +110,17 @@ where
 			.fetch(&runtime::storage().system().account(&account_id.into()))
 			.await?
 			.ok_or(Error::AccountDoesNotExists)?;
-		// let account_info = storage
-		// 	.fetch(&runtime::storage().system().account(signer.account_id().clone()))
-		// 	.await?
-		// 	.ok_or(Error::AccountDoesNotExists)?;
 
 		log::info!(target: LOG_TARGET, "Loaded account {}, {:?}", signer.address(), account_info);
 
 		let nonce = api.tx().account_nonce(signer.account_id()).await? + 1;
 		let tx = epm::signed_solution(raw_solution)?;
-		// let xt = gear_api.tx().create_partial_signed_with_nonce(
-		// 	&tx,
-		// 	nonce,
-		// 	ExtrinsicParams::default(),
-		// )?;
-		let xt = gear_api.tx()
-			.create_signed_with_nonce(&tx, signer.signer(), nonce, Default::default())?;
+		let xt = gear_api.tx().create_signed_with_nonce(
+			&tx,
+			signer.signer(),
+			nonce,
+			Default::default(),
+		)?;
 		// xt.validate();
 		let dry_run_bytes = xt.validate().await?;
 

@@ -18,7 +18,7 @@
 
 use crate::{
 	error::Error,
-	helpers::{storage_at, RuntimeDispatchInfo},
+	helpers::storage_at,
 	opt::{BalanceIterations, Balancing, Solver},
 	prelude::*,
 	static_types,
@@ -31,7 +31,7 @@ use scale_info::{PortableRegistry, TypeInfo};
 use scale_value::scale::{decode_as_type, TypeId};
 use sp_core::Bytes;
 use sp_npos_elections::ElectionScore;
-use subxt::{dynamic::Value, rpc_params, tx::DynamicPayload};
+use subxt::{dynamic::Value, tx::DynamicPayload};
 
 const EPM_PALLET_NAME: &str = "ElectionProviderMultiPhase";
 
@@ -349,7 +349,7 @@ pub async fn runtime_api_solution_weight<S: Encode + NposSolution + TypeInfo + '
 
 	let client = SHARED_CLIENT.get().expect("shared client is configured as start; qed");
 
-	let call_data = {
+	let _call_data = {
 		let mut buffer = Vec::new();
 
 		let encoded_call = client.tx().call_data(&tx).unwrap();
