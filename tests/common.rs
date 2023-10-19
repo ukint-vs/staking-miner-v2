@@ -203,7 +203,7 @@ pub async fn wait_for_mined_solution(ws_url: &str) -> anyhow::Result<ReadySoluti
 	);
 
 	let mut sub = api
-		.rpc()
+		.backend()
 		.subscribe("state_subscribeStorage", rpc_params![vec![key]], "state_unsubscribeStorage")
 		.await
 		.unwrap();

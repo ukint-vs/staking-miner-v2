@@ -53,13 +53,13 @@ pub type Pair = sp_core::sr25519::Pair;
 pub type Accuracy = sp_runtime::Perbill;
 
 /// Extrinsics params used on all chains.
-pub use subxt::config::polkadot::PolkadotExtrinsicParamsBuilder as ExtrinsicParams;
+pub use subxt::config::substrate::SubstrateExtrinsicParamsBuilder as ExtrinsicParams;
 
 /// Subxt client used by the staking miner on all chains.
 pub type SubxtClient = subxt::OnlineClient<Config>;
 
 /// Config used by the staking-miner
-pub type Config = subxt::PolkadotConfig;
+pub type Config = gsdk::GearConfig;
 
 /// Submission type used by the staking miner.
 pub type SignedSubmission<S> =

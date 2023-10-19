@@ -47,7 +47,7 @@ impl BenchmarkExtrinsicBuilder {
 }
 
 impl frame_benchmarking_cli::ExtrinsicBuilder for BenchmarkExtrinsicBuilder {
-	fn remark(&self, nonce: u32) -> std::result::Result<OpaqueExtrinsic, &'static str> {
+	fn remark(&self, nonce: u64) -> std::result::Result<OpaqueExtrinsic, &'static str> {
 		let acc = Sr25519Keyring::Bob.pair();
 		let extrinsic: OpaqueExtrinsic = create_benchmark_extrinsic(
 			self.client.as_ref(),
@@ -68,7 +68,7 @@ pub fn create_benchmark_extrinsic(
 	client: &FullClient,
 	sender: sp_core::sr25519::Pair,
 	call: runtime::Call,
-	nonce: u32,
+	nonce: u64,
 ) -> runtime::UncheckedExtrinsic {
 	let genesis_hash = client.block_hash(0).ok().flatten().expect("Genesis block exists; qed");
 	let best_hash = client.chain_info().best_hash;

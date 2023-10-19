@@ -50,6 +50,7 @@ pub enum Chain {
 	Westend,
 	Kusama,
 	Polkadot,
+	Vara
 }
 
 impl fmt::Display for Chain {
@@ -58,6 +59,7 @@ impl fmt::Display for Chain {
 			Self::Polkadot => "polkadot",
 			Self::Kusama => "kusama",
 			Self::Westend => "westend",
+			Self::Vara => "vara",
 		};
 		write!(f, "{}", chain)
 	}
@@ -71,22 +73,20 @@ impl std::str::FromStr for Chain {
 			"polkadot" => Ok(Self::Polkadot),
 			"kusama" => Ok(Self::Kusama),
 			"westend" => Ok(Self::Westend),
+			"vara" => Ok(Self::Vara),
 			chain => Err(Error::InvalidChain(chain.to_string())),
 		}
 	}
 }
 
-impl TryFrom<subxt::rpc::types::RuntimeVersion> for Chain {
+impl TryFrom<subxt::backend::unstable::rpc_methods::RuntimeSpec> for Chain {
 	type Error = Error;
 
-	fn try_from(rv: subxt::rpc::types::RuntimeVersion) -> Result<Self, Error> {
-		let json = rv
-			.other
-			.get("specName")
-			.expect("RuntimeVersion must have specName; qed")
+	fn try_from(rv: subxt::backend::unstable::rpc_methods::RuntimeSpec) -> Result<Self, Error> {
+		let spec_name = rv
+			.spec_name
 			.clone();
-		let mut chain =
-			serde_json::from_value::<String>(json).expect("specName must be String; qed");
+		let mut chain = spec_name;
 		chain.make_ascii_lowercase();
 		Chain::from_str(&chain)
 	}
@@ -94,13 +94,11 @@ impl TryFrom<subxt::rpc::types::RuntimeVersion> for Chain {
 
 // This is infallible because all these field must exist on substrate-based chains
 // and is based on <https://docs.rs/sp-version/latest/sp_version/struct.RuntimeVersion.html>
-impl From<subxt::rpc::types::RuntimeVersion> for RuntimeVersion {
-	fn from(rv: subxt::rpc::types::RuntimeVersion) -> Self {
-		let mut spec_name: String = get_val_unchecked("specName", &rv.other);
-		let impl_name: String = get_val_unchecked("implName", &rv.other);
-		let impl_version: u32 = get_val_unchecked("implVersion", &rv.other);
-		let authoring_version: u32 = get_val_unchecked("authoringVersion", &rv.other);
-		let state_version: u8 = get_val_unchecked("stateVersion", &rv.other);
+impl From<subxt::backend::unstable::rpc_methods::RuntimeSpec> for RuntimeVersion {
+	fn from(rv: subxt::backend::unstable::rpc_methods::RuntimeSpec) -> Self {
+		let mut spec_name: String = rv.spec_name;
+		let impl_name: String = rv.impl_name;
+		let impl_version: u32 = rv.impl_version;
 
 		let spec_version = rv.spec_version;
 		let transaction_version = rv.transaction_version;
@@ -113,8 +111,6 @@ impl From<subxt::rpc::types::RuntimeVersion> for RuntimeVersion {
 			impl_version,
 			spec_version,
 			transaction_version,
-			authoring_version,
-			state_version,
 		}
 	}
 }
@@ -125,9 +121,7 @@ pub struct RuntimeVersion {
 	pub impl_name: String,
 	pub spec_version: u32,
 	pub impl_version: u32,
-	pub authoring_version: u32,
 	pub transaction_version: u32,
-	pub state_version: u8,
 }
 
 fn get_val_unchecked<T: DeserializeOwned>(val: &str, rv: &HashMap<String, serde_json::Value>) -> T {

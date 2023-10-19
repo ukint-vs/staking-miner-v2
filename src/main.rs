@@ -35,14 +35,17 @@ mod helpers;
 mod opt;
 mod prelude;
 mod prometheus;
-mod signer;
+// mod signer;
 mod static_types;
 
 use clap::Parser;
 use error::Error;
 use futures::future::{BoxFuture, FutureExt};
+use gsdk::{metadata::calls::GearCall, GearConfig};
 use jsonrpsee::ws_client::WsClientBuilder;
 use prelude::*;
+use subxt::backend::rpc::RpcClient;
+use subxt::backend::unstable::UnstableRpcMethods;
 use std::{str::FromStr, sync::Arc};
 use tokio::sync::oneshot;
 use tracing_subscriber::EnvFilter;
@@ -104,6 +107,11 @@ macro_rules! any_runtime {
 				use $crate::static_types::westend::MinerConfig;
 				$($code)*
 			},
+			$crate::opt::Chain::Vara => {
+				#[allow(unused)]
+				use $crate::static_types::vara::MinerConfig;
+				$($code)*
+			},
 		}
 	};
 }
@@ -116,11 +124,27 @@ async fn main() -> Result<(), Error> {
 
 	log::debug!(target: LOG_TARGET, "attempting to connect to {:?}", uri);
 
+	// let rpc = loop {
+	// 	match WsClientBuilder::default()
+	// 		.max_request_body_size(u32::MAX)
+	// 		.request_timeout(std::time::Duration::from_secs(600))
+	// 		.build(&uri)
+	// 		.await
+	// 	{
+	// 		Ok(rpc) => break rpc,
+	// 		Err(e) => {
+	// 			log::warn!(
+	// 				target: LOG_TARGET,
+	// 				"failed to connect to client due to {:?}, retrying soon..",
+	// 				e,
+	// 			);
+	// 		},
+	// 	};
+	// 	tokio::time::sleep(std::time::Duration::from_millis(2_500)).await;
+	// };
+
 	let rpc = loop {
-		match WsClientBuilder::default()
-			.max_request_body_size(u32::MAX)
-			.request_timeout(std::time::Duration::from_secs(600))
-			.build(&uri)
+		match RpcClient::from_url(&uri)
 			.await
 		{
 			Ok(rpc) => break rpc,
@@ -135,9 +159,13 @@ async fn main() -> Result<(), Error> {
 		tokio::time::sleep(std::time::Duration::from_millis(2_500)).await;
 	};
 
-	let api = SubxtClient::from_rpc_client(Arc::new(rpc)).await?;
-	let runtime_version: RuntimeVersion = api.rpc().runtime_version(None).await?.into();
-	let chain = opt::Chain::from_str(&runtime_version.spec_name)?;
+	let api = SubxtClient::from_rpc_client(rpc.clone()).await?;
+	let gear_api = gsdk::Api::new(Some(&uri)).await.unwrap();
+	// let gear_signer = gear_api.clone().signer("", None)?;
+	let unstable_rpc = UnstableRpcMethods::<GearConfig>::new(rpc);
+	// let sub_id = unstable_rpc.chainhead_unstable_follow(true).await?.subscription_id();
+	let runtime_version = api.backend().current_runtime_version().await?;
+	let chain = opt::Chain::from_str("vara")?;
 	let _prometheus_handle = prometheus::run(prometheus_port)
 		.map_err(|e| log::warn!("Failed to start prometheus endpoint: {}", e));
 	log::info!(target: LOG_TARGET, "Connected to chain: {}", chain);
@@ -152,17 +180,14 @@ async fn main() -> Result<(), Error> {
 
 	let res = any_runtime!(chain, {
 		let fut = match command {
-			Command::Monitor(cfg) => commands::monitor_cmd::<MinerConfig>(api, cfg).boxed(),
-			Command::DryRun(cfg) => commands::dry_run_cmd::<MinerConfig>(api, cfg).boxed(),
+			Command::Monitor(cfg) => commands::monitor_cmd::<MinerConfig>(api, gear_api, cfg).boxed(),
+			Command::DryRun(cfg) => commands::dry_run_cmd::<MinerConfig>(api, gear_api, cfg).boxed(),
 			Command::EmergencySolution(cfg) =>
 				commands::emergency_solution_cmd::<MinerConfig>(api, cfg).boxed(),
 			Command::Info => async {
-				let is_compat = if runtime::validate_codegen(&api).is_ok() { "YES" } else { "NO" };
+				let is_compat = if runtime::is_codegen_valid_for(&api.metadata()) { "YES" } else { "NO" };
 
-				let remote_node = serde_json::to_string_pretty(&runtime_version)
-					.expect("Serialize is infallible; qed");
-
-				eprintln!("Remote_node:\n{remote_node}");
+				eprintln!("Remote_node:\n{:#?}", runtime_version);
 				eprintln!("Compatible: {is_compat}");
 
 				Ok(())

@@ -16,13 +16,14 @@
 
 //! The dry-run command.
 
+use std::ops::Deref;
+
 use pallet_election_provider_multi_phase::RawSolution;
 
-use crate::{
-	epm, error::Error, helpers::storage_at, opt::Solver, prelude::*, signer::Signer, static_types,
-};
+use crate::{epm, error::Error, helpers::storage_at, opt::Solver, prelude::*, static_types};
 use clap::Parser;
 use codec::Encode;
+use gsdk::{signer::{Signer, Inner}, Api, metadata::gear};
 
 #[derive(Debug, Clone, Parser)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -56,7 +57,11 @@ pub struct DryRunConfig {
 	pub seed_or_path: Option<String>,
 }
 
-pub async fn dry_run_cmd<T>(api: SubxtClient, config: DryRunConfig) -> Result<(), Error>
+pub async fn dry_run_cmd<T>(
+	api: SubxtClient,
+	gear_api: Api,
+	config: DryRunConfig,
+) -> Result<(), Error>
 where
 	T: MinerConfig<AccountId = AccountId, MaxVotesPerVoter = static_types::MaxVotesPerVoter>
 		+ Send
@@ -98,22 +103,35 @@ where
 	// If an account seed or path is provided, then do a dry run to the node. Otherwise,
 	// we've logged the solution above and we do nothing else.
 	if let Some(seed_or_path) = &config.seed_or_path {
-		let signer = Signer::new(seed_or_path)?;
-		let account_info = storage
-			.fetch(&runtime::storage().system().account(signer.account_id()))
+		let signer = Signer::new(gear_api.clone(), seed_or_path, None).unwrap();
+		let account_id: [u8; 32] = signer.account_id().clone().into();
+		let account_info = gear_api
+			.storage()
+			.at_latest()
+			.await?
+			.fetch(&runtime::storage().system().account(&account_id.into()))
 			.await?
 			.ok_or(Error::AccountDoesNotExists)?;
+		// let account_info = storage
+		// 	.fetch(&runtime::storage().system().account(signer.account_id().clone()))
+		// 	.await?
+		// 	.ok_or(Error::AccountDoesNotExists)?;
 
-		log::info!(target: LOG_TARGET, "Loaded account {}, {:?}", signer, account_info);
+		log::info!(target: LOG_TARGET, "Loaded account {}, {:?}", signer.address(), account_info);
 
-		let nonce = api.rpc().system_account_next_index(signer.account_id()).await?;
+		let nonce = api.tx().account_nonce(signer.account_id()).await? + 1;
 		let tx = epm::signed_solution(raw_solution)?;
-		let xt =
-			api.tx()
-				.create_signed_with_nonce(&tx, &*signer, nonce, ExtrinsicParams::default())?;
-		let dry_run_bytes = api.rpc().dry_run(xt.encoded(), config.at).await?;
+		// let xt = gear_api.tx().create_partial_signed_with_nonce(
+		// 	&tx,
+		// 	nonce,
+		// 	ExtrinsicParams::default(),
+		// )?;
+		let xt = gear_api.tx()
+			.create_signed_with_nonce(&tx, signer.signer(), nonce, Default::default())?;
+		// xt.validate();
+		let dry_run_bytes = xt.validate().await?;
 
-		let dry_run_result = dry_run_bytes.into_dry_run_result(&api.metadata())?;
+		let dry_run_result = dry_run_bytes;
 
 		log::info!(target: LOG_TARGET, "dry-run outcome is {:?}", dry_run_result);
 	}
