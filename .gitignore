@@ -9,7 +9,6 @@
 .idea
 .vscode
 .DS_Store
-.cargo
 .env
 Cargo.lock
 
