@@ -171,7 +171,7 @@ where
 		+ 'static,
 	T::Solution: Send,
 {
-	let signer = Signer::new(gear_api, &config.seed_or_path, None).unwrap();
+	let signer = Signer::new(gear_api.clone(), &config.seed_or_path, None).unwrap();
 	let account_id: [u8; 32] = signer.account_id().clone().into();
 
 	let account_info = {
@@ -225,7 +225,7 @@ where
 		// Spawn task and non-recoverable errors are sent back to the main task
 		// such as if the connection has been closed.
 		let tx2 = tx.clone();
-		let api2 = api.clone();
+		let api2 = gear_api.clone();
 		let signer2 = signer.clone();
 		let config2 = config.clone();
 		let submit_lock2 = submit_lock.clone();
@@ -252,7 +252,7 @@ where
 /// Construct extrinsic at given block and watch it.
 async fn mine_and_submit_solution<T>(
 	at: Header,
-	api: SubxtClient,
+	api: Api,
 	signer: Signer,
 	config: MonitorConfig,
 	submit_lock: Arc<Mutex<()>>,
@@ -270,7 +270,7 @@ where
 	// NOTE: as we try to send at each block then the nonce is used guard against
 	// submitting twice. Because once a solution has been accepted on chain
 	// the "next transaction" at a later block but with the same nonce will be rejected
-	let nonce = api.tx().account_nonce(signer.account_id()).await? + 1;
+	let nonce = api.tx().account_nonce(signer.account_id()).await?;
 
 	ensure_signed_phase(&api, block_hash)
 		.inspect_err(|e| {
@@ -409,7 +409,6 @@ where
 
 	prometheus::on_submission_attempt();
 	match submit_and_watch_solution::<T>(
-		&api,
 		signer,
 		(solution, score, round),
 		nonce,
@@ -502,18 +501,20 @@ async fn ensure_solution_passes_strategy(
 }
 
 async fn submit_and_watch_solution<T: MinerConfig + Send + Sync + 'static>(
-	api: &SubxtClient,
 	signer: Signer,
 	(solution, score, round): (SolutionOf<T>, sp_npos_elections::ElectionScore, u32),
 	nonce: u64,
 	listen: Listen,
 	dry_run: bool,
 ) -> Result<(), Error> {
+	let api = signer.api();
 	let tx = epm::signed_solution(RawSolution { solution, score, round })?;
-
-	let xt = api
-		.tx()
-		.create_signed_with_nonce(&tx, signer.signer(), nonce, Default::default())?;
+	let xt = api.tx().create_signed_with_nonce(
+		&tx,
+		signer.signer(),
+		nonce,
+		Default::default(),
+	)?;
 
 	if dry_run {
 		let dry_run_bytes = xt.validate().await?;
