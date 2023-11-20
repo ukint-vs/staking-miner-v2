@@ -3,4 +3,4 @@
 rustflags = ["-C", "link-arg=-Wl,--allow-multiple-definition"]
 
 [target.x86_64-unknown-linux-musl]
-rustflags = ["-C", "link-arg=-Wl,--allow-multiple-definition"]
+rustflags = ["-C", "link-arg=--allow-multiple-definition"]
